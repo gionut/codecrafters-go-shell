@@ -10,9 +10,15 @@ import (
 var _ = fmt.Print
 
 func main() {
-	for true {
+	var run = true
+	for run {
 		fmt.Print("$ ")
 		command, _ := bufio.NewReader(os.Stdin).ReadString('\n')
+		command = command[:len(command)-1]
+		if command == "exit" {
+			run = false
+			continue
+		}
 		fmt.Println(command[:len(command)-1] + ": command not found")
 	}
 }
