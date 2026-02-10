@@ -11,15 +11,24 @@ import (
 var _ = fmt.Print
 
 func main() {
-	var run = true
-	for run {
+	commands := map[string]bool {
+		"exit": true,
+		"echo": true,
+		"type": true,
+	}
+
+	var loop = true
+	for loop {
 		fmt.Print("$ ")
+		
 		command, _ := bufio.NewReader(os.Stdin).ReadString('\n')
 		command = strings.Trim(command, "\n")
+		
 		if command == "exit" {
-			run = false
+			loop = false
 			continue
 		}
+
 		var tokens = strings.SplitN(command, " ", 2)
 		if len(tokens) == 0 {
 			continue
@@ -33,6 +42,20 @@ func main() {
 			fmt.Println(args)
 			continue
 		}
+		if command == "type" {
+			if len(tokens) < 2 {
+				continue
+			}
+			var args string = tokens[1]
+			_, ok := commands[args]
+			if ok {
+				fmt.Println(args + " is a shell builtin")
+			} else {
+				fmt.Println(args + ": not found")
+			}
+			continue
+		}
+
 		fmt.Println(command + ": command not found")
 	}
 }
