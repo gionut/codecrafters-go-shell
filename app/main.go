@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"os/exec"
 )
 
 
 type Shell struct {
-	commands map[string]func([]string)
+	builtins map[string]func([]string)
+	path string
 	loop bool
 	reader *bufio.Scanner
 }
@@ -24,11 +26,21 @@ func (s Shell) _type(args []string) {
 	}
 	
 	name := args[0]
-	if _, ok := s.commands[name]; ok {
+	// Search builtins
+	if _, ok := s.builtins[name]; ok {
 		fmt.Printf("%s is a shell builtin\n", name)
-	} else {
-		fmt.Printf("%s: not found\n", name)
+		return
 	}
+	
+	// Search PATH
+	path, err := exec.LookPath(name)
+	if err == nil {
+		fmt.Printf("%s is %s\n", name, path)
+		return
+	}
+
+	// Not Found
+	fmt.Printf("%s: not found\n", name)		
 }
 
 func (s Shell) _echo(args []string) {
@@ -55,28 +67,30 @@ func (s *Shell) Loop() {
 		command := tokens[0]
 		args := tokens[1:]
 		
-		if cmd, ok := s.commands[command]; ok {
+		if cmd, ok := s.builtins[command]; ok {
 			cmd(args)
-		} else {
+		} else { 
 			fmt.Println(command + ": command not found")
 		}
 	}
 }
 
 func NewShell() *Shell {
+	path := os.Getenv("PATH")
 	scanner := bufio.NewScanner(os.Stdin)
     scanner.Buffer(make([]byte, 0, 1024), 1024)
     
 	s := &Shell{
+		path: path,
         loop:     true,
-        commands: make(map[string]func([]string)),
+        builtins: make(map[string]func([]string)),
 		reader: scanner,
     }
     
     // Register commands here
-    s.commands["exit"] = s._exit
-    s.commands["type"] = s._type
-    s.commands["echo"] = s._echo
+    s.builtins["exit"] = s._exit
+    s.builtins["type"] = s._type
+    s.builtins["echo"] = s._echo
     
     return s
 }
