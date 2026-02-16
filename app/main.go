@@ -4,8 +4,8 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"strings"
 	"os/exec"
+	"strings"
 )
 
 
@@ -51,6 +51,17 @@ func (s Shell) _echo(args []string) {
 	fmt.Println(strings.Join(args, " "))
 }
 
+func (s Shell) executePathCommand(path string, args []string) {
+	cmd := exec.Command(path, args...)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Printf("Command failed with error: %v\n", err)
+	}
+
+	fmt.Printf("\n%s\n", string(output))
+}
+
 func (s *Shell) Loop() {
 	for s.loop {
 		fmt.Print("$ ")
@@ -67,11 +78,22 @@ func (s *Shell) Loop() {
 		command := tokens[0]
 		args := tokens[1:]
 		
+		// Try builtin
 		if cmd, ok := s.builtins[command]; ok {
 			cmd(args)
-		} else { 
-			fmt.Println(command + ": command not found")
-		}
+			continue
+		} 
+
+		// Search PATH
+		path, err := exec.LookPath(command)
+		if err == nil {
+			s.executePathCommand(path, args)
+			continue
+		} 
+		
+		// Command not found
+		fmt.Println(command + ": command not found")
+		
 	}
 }
 
