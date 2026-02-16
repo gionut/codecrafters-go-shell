@@ -51,8 +51,8 @@ func (s Shell) _echo(args []string) {
 	fmt.Println(strings.Join(args, " "))
 }
 
-func (s Shell) executePathCommand(path string, args []string) {
-	cmd := exec.Command(path, args...)
+func (s Shell) executePathCommand(command string, args []string) {
+	cmd := exec.Command(command, args...)
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -85,9 +85,9 @@ func (s *Shell) Loop() {
 		} 
 
 		// Search PATH
-		path, err := exec.LookPath(command)
+		_, err := exec.LookPath(command)
 		if err == nil {
-			s.executePathCommand(path, args)
+			s.executePathCommand(command, args)
 			continue
 		} 
 		
