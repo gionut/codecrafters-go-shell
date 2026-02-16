@@ -59,7 +59,7 @@ func (s Shell) executePathCommand(command string, args []string) {
 		fmt.Printf("Command failed with error: %v\n", err)
 	}
 
-	fmt.Printf("%s\n", string(output))
+	fmt.Printf("%s", string(output))
 }
 
 func (s *Shell) Loop() {
