@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"strconv"
 )
 
 type Shell struct {
@@ -13,8 +14,8 @@ type Shell struct {
 	path string
 	loop bool
 	reader *bufio.Scanner
-	history strings.Builder
-	historyLines int
+	history []string
+	defaultHistoryLimit int
 }
 
 func (s *Shell) _exit(args []string) {
@@ -22,7 +23,17 @@ func (s *Shell) _exit(args []string) {
 }
 
 func (s *Shell) _history(args []string) {
-	fmt.Printf("%s", s.history.String())
+	limit := s.defaultHistoryLimit
+	if len(args) > 0 {
+		if val, err := strconv.Atoi(args[0]); err == nil {
+        	limit = val
+    	}
+	}
+	var history strings.Builder
+	for i := max(0, len(s.history)-limit); i < len(s.history); i++ {
+		fmt.Fprintf(&history, "%d %s\n", i, s.history[i])
+	}
+	fmt.Printf(history.String())
 }
 
 func (s Shell) _type(args []string) {
@@ -68,8 +79,9 @@ func (s Shell) executePathCommand(command string, args []string) {
 }
 
 func (s* Shell) _updateHistory(command string, args []string) {
-	fmt.Fprintf(&s.history, "%d %s %s\n", s.historyLines, command, strings.Join(args, " "))
-	s.historyLines += 1
+	entry := command + " " + strings.Join(args, " ")
+    
+    s.history = append(s.history, entry)
 }
 
 func (s *Shell) Loop() {
@@ -120,6 +132,7 @@ func NewShell() *Shell {
         loop:     true,
         builtins: make(map[string]func([]string)),
 		reader: scanner,
+		defaultHistoryLimit: 16,
     }
     
     // Register commands here
