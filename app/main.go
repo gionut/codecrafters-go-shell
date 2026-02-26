@@ -8,16 +8,21 @@ import (
 	"strings"
 )
 
-
 type Shell struct {
 	builtins map[string]func([]string)
 	path string
 	loop bool
 	reader *bufio.Scanner
+	history strings.Builder
+	historyLines int
 }
 
 func (s *Shell) _exit(args []string) {
 	s.loop = false
+}
+
+func (s *Shell) _history(args []string) {
+	fmt.Printf("%s", s.history.String())
 }
 
 func (s Shell) _type(args []string) {
@@ -62,6 +67,11 @@ func (s Shell) executePathCommand(command string, args []string) {
 	fmt.Printf("%s", string(output))
 }
 
+func (s* Shell) _updateHistory(command string, args []string) {
+	fmt.Fprintf(&s.history, "%d %s %s\n", s.historyLines, command, strings.Join(args, " "))
+	s.historyLines += 1
+}
+
 func (s *Shell) Loop() {
 	for s.loop {
 		fmt.Print("$ ")
@@ -78,6 +88,9 @@ func (s *Shell) Loop() {
 		command := tokens[0]
 		args := tokens[1:]
 		
+		// Add to history
+		s._updateHistory(command, args)
+
 		// Try builtin
 		if cmd, ok := s.builtins[command]; ok {
 			cmd(args)
@@ -113,6 +126,7 @@ func NewShell() *Shell {
     s.builtins["exit"] = s._exit
     s.builtins["type"] = s._type
     s.builtins["echo"] = s._echo
+	s.builtins["history"] = s._history
     
     return s
 }
