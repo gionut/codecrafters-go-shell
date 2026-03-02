@@ -1,19 +1,19 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
 	"strconv"
+	"github.com/chzyer/readline"
 )
 
 type Shell struct {
 	builtins map[string]func([]string)
 	path string
 	loop bool
-	reader *bufio.Scanner
+	reader *readline.Instance
 	history []string
 	defaultHistoryLimit int
 }
@@ -33,7 +33,7 @@ func (s *Shell) _history(args []string) {
 	for i := max(0, len(s.history)-limit); i < len(s.history); i++ {
 		fmt.Fprintf(&history, "%d %s\n", i, s.history[i])
 	}
-	fmt.Printf(history.String())
+	fmt.Printf("%s", history.String())
 }
 
 func (s Shell) _type(args []string) {
@@ -85,14 +85,15 @@ func (s* Shell) _updateHistory(command string, args []string) {
 }
 
 func (s *Shell) Loop() {
+	defer s.reader.Close()
+	
 	for s.loop {
-		fmt.Print("$ ")
+		line, err := s.reader.Readline()
+		if err != nil { // io.EOF
+			break
+		}
 
-		if !s.reader.Scan() {
-            break
-        }
-
-		tokens := strings.Fields(s.reader.Text())
+		tokens := strings.Fields(line)
         if len(tokens) == 0 {
             continue
         }
@@ -110,7 +111,7 @@ func (s *Shell) Loop() {
 		} 
 
 		// Search PATH
-		_, err := exec.LookPath(command)
+		_, err = exec.LookPath(command)
 		if err == nil {
 			s.executePathCommand(command, args)
 			continue
@@ -124,14 +125,16 @@ func (s *Shell) Loop() {
 
 func NewShell() *Shell {
 	path := os.Getenv("PATH")
-	scanner := bufio.NewScanner(os.Stdin)
-    scanner.Buffer(make([]byte, 0, 1024), 1024)
+	rl, err := readline.New("$ ")
+	if err != nil {
+		panic(err)
+	}
     
 	s := &Shell{
 		path: path,
         loop:     true,
         builtins: make(map[string]func([]string)),
-		reader: scanner,
+		reader: rl,
 		defaultHistoryLimit: 16,
     }
     
