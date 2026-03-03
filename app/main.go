@@ -10,6 +10,7 @@ import (
 )
 
 type Shell struct {
+	cwd string
 	builtins map[string]func([]string)
 	path string
 	loop bool
@@ -65,6 +66,10 @@ func (s Shell) _echo(args []string) {
 	}
 
 	fmt.Println(strings.Join(args, " "))
+}
+
+func (s* Shell) _pwd(args []string) {
+	fmt.Println(s.cwd)
 }
 
 func (s Shell) executePathCommand(command string, args []string) {
@@ -125,12 +130,18 @@ func (s *Shell) Loop() {
 
 func NewShell() *Shell {
 	path := os.Getenv("PATH")
+	cwd, err := os.Executable()
+	if err != nil {
+    	fmt.Println(err)
+	}
+	
 	rl, err := readline.New("$ ")
 	if err != nil {
 		panic(err)
 	}
     
 	s := &Shell{
+		cwd: cwd,
 		path: path,
         loop:     true,
         builtins: make(map[string]func([]string)),
@@ -143,6 +154,7 @@ func NewShell() *Shell {
     s.builtins["type"] = s._type
     s.builtins["echo"] = s._echo
 	s.builtins["history"] = s._history
+	s.builtins["pwd"] = s._pwd
     
     return s
 }
