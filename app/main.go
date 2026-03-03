@@ -130,7 +130,7 @@ func (s *Shell) Loop() {
 
 func NewShell() *Shell {
 	path := os.Getenv("PATH")
-	cwd, err := os.Executable()
+	cwd, err := os.Getwd()
 	if err != nil {
     	fmt.Println(err)
 	}
