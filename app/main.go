@@ -79,6 +79,13 @@ func (s* Shell) abs(path string) (string, error){
 	if filepath.IsAbs(path) {
 		return filepath.Clean(path), nil
 	}
+
+	elems := strings.SplitN(path, "/", 2)
+	if elems[0] == "~" {
+		home := os.Getenv("HOME")
+		return filepath.Join(home, strings.Join(elems[1:], "")), nil
+	}
+
 	return filepath.Join(s.cwd, path), nil
 }
 
@@ -88,13 +95,13 @@ func (s* Shell) _cd(args []string) {
 	}
 
 	input := args[0]
-	absPath, err := s.abs(args[0])
+	absPath, err := s.abs(input)
 	if err != nil {
 		fmt.Printf("cd: %s: %v\n", input, err)
         return
     }
-
-	info, err := os.Stat(absPath); 
+	
+	info, err := os.Stat(absPath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
  			fmt.Printf("cd: %s: No such file or directory\n", absPath)
