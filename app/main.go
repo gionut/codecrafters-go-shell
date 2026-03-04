@@ -94,7 +94,6 @@ func (s* Shell) _cd(args []string) {
         return
     }
 
-	fmt.Println(absPath);
 	info, err := os.Stat(absPath); 
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -111,7 +110,6 @@ func (s* Shell) _cd(args []string) {
     }
 
 	s.cwd = absPath
-	fmt.Println(s.cwd)
 }
 
 func (s Shell) executePathCommand(command string, args []string) {
