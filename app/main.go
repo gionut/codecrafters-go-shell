@@ -75,35 +75,43 @@ func (s* Shell) _pwd(args []string) {
 	fmt.Println(s.cwd)
 }
 
+func (s* Shell) abs(path string) (string, error){
+	if filepath.IsAbs(path) {
+		return filepath.Clean(path), nil
+	}
+	return filepath.Join(s.cwd, path), nil
+}
+
 func (s* Shell) _cd(args []string) {
 	if len(args) != 1 {
 		return
 	}
 
 	input := args[0]
-	absPath, err := filepath.Abs(args[0])
+	absPath, err := s.abs(args[0])
 	if err != nil {
 		fmt.Printf("cd: %s: %v\n", input, err)
         return
     }
 
+	fmt.Println(absPath);
 	info, err := os.Stat(absPath); 
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
- 			// fmt.Printf("cd: %s: No such file or directory\n", absPath)
+ 			fmt.Printf("cd: %s: No such file or directory\n", absPath)
 		} else {
-			// fmt.Printf("cd: %s: %v\n", absPath, err)
+			fmt.Printf("cd: %s: %v\n", absPath, err)
 		}
 		return
 	}
 
-	// if !info.IsDir() {
-	// 	fmt.Printf("cd: %s: Not a directory\n", absPath)
-    //     return
-    // }
+	if !info.IsDir() {
+		fmt.Printf("cd: %s: Not a directory\n", absPath)
+        return
+    }
 
 	s.cwd = absPath
-
+	fmt.Println(s.cwd)
 }
 
 func (s Shell) executePathCommand(command string, args []string) {
