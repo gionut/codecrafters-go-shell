@@ -90,9 +90,9 @@ func (s* Shell) _cd(args []string) {
 	info, err := os.Stat(absPath); 
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
- 			fmt.Printf("cd: %s: No such file or directory\n", absPath)
+ 			// fmt.Printf("cd: %s: No such file or directory\n", absPath)
 		} else {
-			fmt.Printf("cd: %s: %v\n", absPath, err)
+			// fmt.Printf("cd: %s: %v\n", absPath, err)
 		}
 		return
 	}
