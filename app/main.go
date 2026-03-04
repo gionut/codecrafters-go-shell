@@ -97,10 +97,10 @@ func (s* Shell) _cd(args []string) {
 		return
 	}
 
-	if !info.IsDir() {
-		fmt.Printf("cd: %s: Not a directory\n", absPath)
-        return
-    }
+	// if !info.IsDir() {
+	// 	fmt.Printf("cd: %s: Not a directory\n", absPath)
+    //     return
+    // }
 
 	s.cwd = absPath
 
