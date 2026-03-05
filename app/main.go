@@ -175,6 +175,38 @@ func (s *Shell) Loop() {
 	}
 }
 
+func (s *Shell) OnChange(line []rune, pos int, key rune) (newLine []rune, newPos int, ok bool) {
+	if key == '\t' {
+		// Remove tab
+		line = line[:len(line)-1]
+		pos = pos-1
+		
+		currentText := string(line)
+		i := strings.LastIndex(currentText, " ")
+		lastWord := currentText[i+1:]
+        if len(lastWord) > 0 {
+			cwd := s.cwd
+			files, err := os.ReadDir(cwd)
+			if err != nil {
+				fmt.Printf("Error while reading the cwd: %s\n", err)
+				return nil, 0, false
+			}
+
+			for _, file := range files {
+				name := file.Name()
+				if strings.HasPrefix(name, lastWord) {
+					suffix := name[len(lastWord):] + " "
+					newLine := append(line, []rune(suffix)...)
+					newPos := pos + len(suffix)
+					return newLine, newPos, true
+				}
+			}
+		}
+    	return line, pos, true
+    }
+    return nil, 0, false
+}
+
 func NewShell() *Shell {
 	path := os.Getenv("PATH")
 	cwd, err := os.Getwd()
@@ -182,20 +214,24 @@ func NewShell() *Shell {
     	fmt.Println(err)
 	}
 	
-	rl, err := readline.New("$ ")
-	if err != nil {
-		panic(err)
-	}
-    
 	s := &Shell{
 		cwd: cwd,
 		path: path,
         loop:     true,
         builtins: make(map[string]func([]string)),
-		reader: rl,
 		defaultHistoryLimit: 16,
     }
+
+	config := &readline.Config{
+		Prompt: "$ ",
+		Listener: s, 
+	}
+	rl, err := readline.NewEx(config)
+	if err != nil {
+		panic(err)
+	}
     
+	s.reader = rl
     // Register commands here
     s.builtins["exit"] = s._exit
     s.builtins["type"] = s._type
