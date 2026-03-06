@@ -176,44 +176,42 @@ func (s *Shell) Loop() {
 }
 
 func (s *Shell) OnChange(line []rune, pos int, key rune) (newLine []rune, newPos int, ok bool) {
-	if key == '\t' {
-		// Remove tab
-		line = line[:pos-1]
-    	pos--
-		
-		currentText := string(line)
-		i := strings.LastIndex(currentText, " ")
-		path := currentText[i+1:]
-		lastWord := path
-		searchDir := s.cwd
-		if strings.Contains(path, "/") {
-			// Nested file completion
-			i := strings.LastIndex(path, "/")
-			lastWord = path[i+1:]
-			searchDir += "/" + path[:i]
-		}
-
-        
-		files, err := os.ReadDir(searchDir)
-		if err != nil {
-			return line, pos, true
-		}	
-
-		for _, file := range files {
-			name := file.Name()
-			if strings.HasPrefix(name, lastWord) {
-				suffix := name[len(lastWord):] + " "
-				newLine := append(line, []rune(suffix)...)
-				newPos := pos + len(suffix)
-
-				return newLine, newPos, true
-			}
-		}
-		
-		return line, pos, true
-    }
+	if key != '\t' {
+		return nil, 0, false
+	}
 	
-    return nil, 0, false
+	// Remove tab
+	line = line[:pos-1]
+	pos--
+	
+	currentText := string(line)
+	i := strings.LastIndex(currentText, " ")
+	prefix := currentText[i+1:]
+	searchDir := s.cwd
+	// Nested file completion
+	if strings.Contains(prefix, "/") {
+		i := strings.LastIndex(prefix, "/")
+		searchDir += "/" + prefix[:i]
+		prefix = prefix[i+1:]
+	}
+
+	files, err := os.ReadDir(searchDir)
+	if err != nil {
+		return line, pos, true
+	}	
+
+	for _, file := range files {
+		name := file.Name()
+		if strings.HasPrefix(name, prefix) {
+			suffix := name[len(prefix):] + " "
+			newLine := append(line, []rune(suffix)...)
+			newPos := pos + len(suffix)
+
+			return newLine, newPos, true
+		}
+	}
+	
+	return line, pos, true
 }
 
 func NewShell() *Shell {
