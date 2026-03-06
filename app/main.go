@@ -178,19 +178,26 @@ func (s *Shell) Loop() {
 func (s *Shell) OnChange(line []rune, pos int, key rune) (newLine []rune, newPos int, ok bool) {
 	if key == '\t' {
 		// Remove tab
-		line = line[:len(line)-1]
-		pos = pos-1
+		line = line[:pos-1]
+    	pos--
 		
 		currentText := string(line)
 		i := strings.LastIndex(currentText, " ")
-		lastWord := currentText[i+1:]
+		path := currentText[i+1:]
+		lastWord := path
+		searchDir := s.cwd
+		if strings.Contains(path, "/") {
+			// Nested file completion
+			i := strings.LastIndex(path, "/")
+			lastWord = path[i+1:]
+			searchDir += "/" + path[:i]
+		}
+
         if len(lastWord) > 0 {
-			cwd := s.cwd
-			files, err := os.ReadDir(cwd)
+			files, err := os.ReadDir(searchDir)
 			if err != nil {
-				fmt.Printf("Error while reading the cwd: %s\n", err)
-				return nil, 0, false
-			}
+				return line, pos, true
+			}	
 
 			for _, file := range files {
 				name := file.Name()
@@ -198,12 +205,15 @@ func (s *Shell) OnChange(line []rune, pos int, key rune) (newLine []rune, newPos
 					suffix := name[len(lastWord):] + " "
 					newLine := append(line, []rune(suffix)...)
 					newPos := pos + len(suffix)
+
 					return newLine, newPos, true
 				}
 			}
 		}
+
     	return line, pos, true
     }
+	
     return nil, 0, false
 }
 
