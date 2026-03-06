@@ -193,25 +193,24 @@ func (s *Shell) OnChange(line []rune, pos int, key rune) (newLine []rune, newPos
 			searchDir += "/" + path[:i]
 		}
 
-        if len(lastWord) > 0 {
-			files, err := os.ReadDir(searchDir)
-			if err != nil {
-				return line, pos, true
-			}	
+        
+		files, err := os.ReadDir(searchDir)
+		if err != nil {
+			return line, pos, true
+		}	
 
-			for _, file := range files {
-				name := file.Name()
-				if strings.HasPrefix(name, lastWord) {
-					suffix := name[len(lastWord):] + " "
-					newLine := append(line, []rune(suffix)...)
-					newPos := pos + len(suffix)
+		for _, file := range files {
+			name := file.Name()
+			if strings.HasPrefix(name, lastWord) {
+				suffix := name[len(lastWord):] + " "
+				newLine := append(line, []rune(suffix)...)
+				newPos := pos + len(suffix)
 
-					return newLine, newPos, true
-				}
+				return newLine, newPos, true
 			}
 		}
-
-    	return line, pos, true
+		
+		return line, pos, true
     }
 	
     return nil, 0, false
