@@ -204,6 +204,10 @@ func (s *Shell) OnChange(line []rune, pos int, key rune) (newLine []rune, newPos
 		name := file.Name()
 		if strings.HasPrefix(name, prefix) {
 			suffix := name[len(prefix):] + " "
+			if file.IsDir() {
+				suffix = name[len(prefix):] + "/"
+			}
+
 			newLine := append(line, []rune(suffix)...)
 			newPos := pos + len(suffix)
 
