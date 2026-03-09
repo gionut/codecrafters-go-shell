@@ -8,8 +8,9 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-
+	"slices"
 	"github.com/chzyer/readline"
+	"github.com/samber/lo"
 )
 
 type Shell struct {
@@ -198,7 +199,23 @@ func (s *Shell) OnChange(line []rune, pos int, key rune) (newLine []rune, newPos
 	files, err := os.ReadDir(searchDir)
 	if err != nil {
 		return line, pos, true
-	}	
+	}
+
+	count := lo.CountBy(files, func(f os.DirEntry) bool {
+    	return strings.HasPrefix(f.Name(), prefix)
+	})
+
+	if count > 1 {
+		names := lo.Map(files, func(f os.DirEntry, _ int) string {
+    		if f.IsDir() {
+				return f.Name() + "/"
+			}
+			return f.Name()
+		})
+		slices.Sort(names)
+		fmt.Printf("\n%s\n", strings.Join(names, "  "))
+		return append(line, '\x07'), pos + 1, true
+	}
 
 	for _, file := range files {
 		name := file.Name()
