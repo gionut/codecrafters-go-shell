@@ -215,7 +215,8 @@ func (s *Shell) OnChange(line []rune, pos int, key rune) (newLine []rune, newPos
 		}
 	}
 	
-	return line, pos, true
+	// No match return the bell '\x07' charactrer
+	return append(line, '\x07'), pos + 1, true
 }
 
 func NewShell() *Shell {
