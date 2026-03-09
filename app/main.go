@@ -185,10 +185,19 @@ func (s *Shell) OnChange(line []rune, pos int, key rune) (newLine []rune, newPos
 	line = line[:pos-1]
 	pos--
 	
-	currentText := string(line)
+	currentText := strings.TrimSpace(string(line))
 	i := strings.LastIndex(currentText, " ")
 	prefix := currentText[i+1:]
 	searchDir := s.cwd
+
+	bellRang := false
+	if strings.Contains(prefix, string('\x07')) {
+		bellRang = true
+		prefix = prefix[:len(prefix)-1]
+		line = line[:pos-1]
+		pos--
+	}
+
 	// Nested file completion
 	if strings.Contains(prefix, "/") {
 		i := strings.LastIndex(prefix, "/")
@@ -201,11 +210,14 @@ func (s *Shell) OnChange(line []rune, pos int, key rune) (newLine []rune, newPos
 		return line, pos, true
 	}
 
-	count := lo.CountBy(files, func(f os.DirEntry) bool {
+	matchesCnt := lo.CountBy(files, func(f os.DirEntry) bool {
     	return strings.HasPrefix(f.Name(), prefix)
 	})
 
-	if count > 1 {
+	if matchesCnt > 1 {
+		if !bellRang {
+			return append(line, '\x07'), pos + 1, true
+		}
 		names := lo.Map(files, func(f os.DirEntry, _ int) string {
     		if f.IsDir() {
 				return f.Name() + "/"
@@ -214,7 +226,7 @@ func (s *Shell) OnChange(line []rune, pos int, key rune) (newLine []rune, newPos
 		})
 		slices.Sort(names)
 		fmt.Printf("\n%s\n", strings.Join(names, "  "))
-		return append(line, '\x07'), pos + 1, true
+		return line, pos, true
 	}
 
 	for _, file := range files {
