@@ -185,7 +185,7 @@ func (s *Shell) OnChange(line []rune, pos int, key rune) (newLine []rune, newPos
 	line = line[:pos-1]
 	pos--
 	
-	currentText := strings.TrimSpace(string(line))
+	currentText := string(line)
 	i := strings.LastIndex(currentText, " ")
 	prefix := currentText[i+1:]
 	searchDir := s.cwd
