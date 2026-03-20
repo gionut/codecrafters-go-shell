@@ -6,11 +6,11 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+	"time"
 
+	"github.com/docker/docker/api/types/container"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"github.com/docker/docker/api/types/container"
-
 )
 
 func TestShellContainer(t *testing.T) {
@@ -28,7 +28,6 @@ func TestShellContainer(t *testing.T) {
 	if err := buildCmd.Run(); err != nil {
 		t.Fatalf("failed to build shell binary: %v", err)
 	}
-
 	// 2. Define the container request
 	req := testcontainers.ContainerRequest{
 		Image: "ubuntu:latest",
@@ -40,37 +39,28 @@ func TestShellContainer(t *testing.T) {
 			},
 		},
 		
-		// Run the shell binary as the container's entrypoint/command
-		Cmd: []string{"/usr/local/bin/myshell"},
+		Cmd:   []string{"sleep", "infinity"},
 
-		
-		ConfigModifier: func(config *container.Config) {
-        	config.Tty        = true
-        	config.OpenStdin  = true
-        	config.StdinOnce  = false
-    	},
-
-		WaitingFor: wait.ForExit(),
+		WaitingFor: wait.ForLog(""),
 	}
-	
-	// 3. Start the container
-	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+
+	// 3. Start the cont
+	cont, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
 	})
 	if err != nil {
 		t.Fatalf("failed to start container: %v", err)
 	}
-
 	// Clean up container after test
 	defer func() {
-		if err := container.Terminate(ctx); err != nil {
+		if err := cont.Terminate(ctx); err != nil {
 			t.Logf("failed to terminate container: %v", err)
 		}
 	}()
 
 	// 4. Basic assertion: Container should be running
-	state, err := container.State(ctx)
+	state, err := cont.State(ctx)
 	if err != nil {
 		t.Fatalf("failed to get container state: %v", err)
 	}
@@ -83,4 +73,43 @@ func TestShellContainer(t *testing.T) {
 	} else {
 		t.Log("Container is running")
 	}
+	
+
+	provider, _ := testcontainers.ProviderDocker.GetProvider()
+    dockerClient := provider.(*testcontainers.DockerProvider).Client()
+	resp, err := dockerClient.ContainerExecCreate(ctx, cont.GetContainerID(), container.ExecOptions {
+        AttachStdin:  true,
+		AttachStdout: true,
+		AttachStderr: true,
+		Tty:          true, 
+		Cmd:          []string{"/usr/local/bin/myshell"},
+    })
+
+	attach, err := dockerClient.ContainerExecAttach(ctx, resp.ID, container.ExecStartOptions{
+    	Tty: true,
+	})
+    defer attach.Close()
+
+	conn := attach.Conn
+	// Flush the options to make sure the client sets the raw mode
+	_, _ = conn.Write([]byte{})
+	_, _ = conn.Write([]byte("pwd\x0D"))
+	time.Sleep(200 * time.Millisecond)
+	buf := make([]byte, 256)
+	n, err := conn.Read(buf)
+	if err != nil {
+		t.Logf("Error %s",  err.Error())
+		return
+	}
+	t.Logf("%q", buf[:n])
+	// conn.Write([]byte("\t"))
+	_, _ = conn.Write([]byte("\x0D"))
+	time.Sleep(200 * time.Millisecond)
+	conn.SetReadDeadline(time.Now().Add(200 * time.Millisecond))
+	n, err = conn.Read(buf)
+	if err != nil {
+		t.Logf("Error %s",  err.Error())
+		return
+	}
+	t.Logf("%q", buf[:n])
 }
