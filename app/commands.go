@@ -105,4 +105,5 @@ func (s* Shell) _cd(args []string) {
     }
 
 	s.cwd = absPath
+	os.Chdir(absPath)
 }
