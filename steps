@@ -1,0 +1,4 @@
+> file redirection
+> add stdin to shell. look into stdin default value.
+> look into specifying stdin to fmt.Print
+> create the file (os.WriteToFile)?

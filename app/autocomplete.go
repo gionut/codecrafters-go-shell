@@ -42,11 +42,12 @@ func (s *Shell) OnChange(line []rune, pos int, key rune) (newLine []rune, newPos
 	searchDir := s.cwd
 
 	bellRang := false
-	if strings.Contains(prefix, string('\x07')) {
+	if strings.Contains(prefix, "\x07") {
 		bellRang = true
-		prefix = prefix[:len(prefix)-1]
-		line = line[:pos-1]
-		pos--
+		pos = pos - len(prefix)
+		prefix = strings.ReplaceAll(prefix, "\x07", "")
+		line = append(line[:pos], []rune(prefix)...)
+		pos = len(line)
 	}
 
 	// Nested file completion

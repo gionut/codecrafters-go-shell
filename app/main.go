@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"strings"
 	"github.com/chzyer/readline"
+	"slices"
 )
 
 type Shell struct {
@@ -16,6 +17,8 @@ type Shell struct {
 	reader *readline.Instance
 	history []string
 	defaultHistoryLimit int
+	name string
+	stdin *os.File
 }
 
 
@@ -50,17 +53,42 @@ func (s *Shell) Loop() {
             continue
         }
 		
-		command := tokens[0]
-		args := tokens[1:]
+		command, args := tokens[0], tokens[1:]
 		
 		// Add to history
 		s._updateHistory(command, args)
+
+		// Check for input redirection
+		pos := slices.IndexFunc(args, func(s string) bool {
+			return s == ">" || s == "1>"
+		})
+		if pos != -1 {
+			if len(args) < pos + 1 {
+				fmt.Printf("%s: Error: redirection requires a file argument\n", s.name)
+				continue
+			}
+			file := args[pos + 1]
+			args = args[:pos]
+			absPath, nil := s.toAbs(file)
+			if err != nil {
+				fmt.Printf("%s: Error: %s\n", s.name, err)
+        		continue
+    		}	
+	
+			// Create the if it does not exist
+			fd, err := os.Create(absPath)
+			if err != nil {
+				fmt.Printf("%s: %s\n", s.name, err)
+			}
+			defer fd.Close()
+			s.stdin = fd
+		}
 
 		// Try builtin
 		if cmd, ok := s.builtins[command]; ok {
 			cmd(args)
 			continue
-		} 
+		}
 
 		// Search PATH
 		_, err = exec.LookPath(command)
@@ -88,6 +116,8 @@ func NewShell() *Shell {
         loop:     true,
         builtins: make(map[string]func([]string)),
 		defaultHistoryLimit: 16,
+		name: "myshell",
+		stdin: os.Stdin,
     }
 
 	config := &readline.Config{
