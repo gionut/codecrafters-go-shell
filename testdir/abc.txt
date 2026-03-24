@@ -1,6 +1,0 @@
-abc.txt
-readme.txt
-report.txt
-xyz_foo
-xyz_foo_bar
-xyz_foo_bar_baz
