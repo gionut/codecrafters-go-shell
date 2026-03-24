@@ -32,3 +32,7 @@ Note: This section is for stages 2 and beyond.
    `app/main.go`.
 1. Commit your changes and run `git push origin master` to submit your solution
    to CodeCrafters. Test output will be streamed to your terminal.
+
+Implementing output redirection:
+use dup2 to redirect os.Stdout to the fd of the file argument.
+use a withRedirection closure with a defer block to restore os.Stdout to the original fd.

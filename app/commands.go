@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"fmt"
@@ -25,7 +24,7 @@ func (s *Shell) _history(args []string) {
 	for i := max(0, len(s.history)-limit); i < len(s.history); i++ {
 		fmt.Fprintf(&history, "%d %s\n", i, s.history[i])
 	}
-	fmt.Fprintf(s.stdin, "%s", history.String())
+	fmt.Printf("%s", history.String())
 }
 
 func (s* Shell) _type(args []string) {
@@ -36,14 +35,14 @@ func (s* Shell) _type(args []string) {
 	name := args[0]
 	// Search builtins
 	if _, ok := s.builtins[name]; ok {
-		fmt.Fprintf(s.stdin, "%s is a shell builtin\n", name)
+		fmt.Printf("%s is a shell builtin\n", name)
 		return
 	}
 	
 	// Search PATH
 	path, err := exec.LookPath(name)
 	if err == nil {
-		fmt.Fprintf(s.stdin, "%s is %s\n", name, path)
+		fmt.Printf("%s is %s\n", name, path)
 		return
 	}
 
@@ -56,26 +55,11 @@ func (s* Shell) _echo(args []string) {
 		return
 	}
 
-	fmt.Fprintf(s.stdin, "%s\n", strings.Join(args, " "))
+	fmt.Printf("%s\n", strings.Join(args, " "))
 }
 
 func (s* Shell) _pwd(args []string) {
-	fmt.Fprintf(s.stdin, "%s\n", s.cwd)
-}
-
-// Convert a path argument to its absolute path
-func (s* Shell) toAbs(path string) (string, error){
-	if filepath.IsAbs(path) {
-		return filepath.Clean(path), nil
-	}
-
-	elems := strings.SplitN(path, "/", 2)
-	if elems[0] == "~" {
-		home := os.Getenv("HOME")
-		return filepath.Join(home, strings.Join(elems[1:], "")), nil
-	}
-
-	return filepath.Join(s.cwd, path), nil
+	fmt.Printf("%s\n", s.cwd)
 }
 
 func (s* Shell) _cd(args []string) {
@@ -86,28 +70,28 @@ func (s* Shell) _cd(args []string) {
 	input := args[0]
 	absPath, err := s.toAbs(input)
 	if err != nil {
-		fmt.Fprintf(s.stdin, "cd: %s: %v\n", input, err)
+		fmt.Printf("cd: %s: %v\n", input, err)
         return
     }
 	
 	info, err := os.Stat(absPath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
- 			fmt.Fprintf(s.stdin, "cd: %s: No such file or directory\n", absPath)
+ 			fmt.Printf("cd: %s: No such file or directory\n", absPath)
 		} else {
-			fmt.Fprintf(s.stdin, "cd: %s: %v\n", absPath, err)
+			fmt.Printf("cd: %s: %v\n", absPath, err)
 		}
 		return
 	}
 
 	if !info.IsDir() {
-		fmt.Fprintf(s.stdin, "cd: %s: Not a directory\n", absPath)
+		fmt.Printf("cd: %s: Not a directory\n", absPath)
         return
     }
 
 	err = os.Chdir(absPath)
 	if err != nil {
-		fmt.Fprintf(s.stdin, "cd: Error while changing directory: %s\n", err)
+		fmt.Printf("cd: Error while changing directory: %s\n", err)
 	}
 	s.cwd = absPath
 }

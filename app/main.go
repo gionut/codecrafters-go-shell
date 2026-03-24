@@ -7,6 +7,8 @@ import (
 	"strings"
 	"github.com/chzyer/readline"
 	"slices"
+	"syscall"
+	"path/filepath"
 )
 
 type Shell struct {
@@ -21,6 +23,20 @@ type Shell struct {
 	stdin *os.File
 }
 
+// Convert a path argument to its absolute path
+func (s* Shell) toAbs(path string) (string, error){
+	if filepath.IsAbs(path) {
+		return filepath.Clean(path), nil
+	}
+
+	elems := strings.SplitN(path, "/", 2)
+	if elems[0] == "~" {
+		home := os.Getenv("HOME")
+		return filepath.Join(home, strings.Join(elems[1:], "")), nil
+	}
+
+	return filepath.Join(s.cwd, path), nil
+}
 
 func (s Shell) executePathCommand(command string, args []string) {
 	cmd := exec.Command(command, args...)
@@ -39,12 +55,75 @@ func (s* Shell) _updateHistory(command string, args []string) {
     s.history = append(s.history, entry)
 }
 
+func parseRedirect(args []string) (file string, cleaned []string, err error) {
+	pos := slices.IndexFunc(args, func(s string) bool {
+		return s == ">" || s == "1>"
+	})
+
+	if pos == -1 {
+		return "", args, nil
+	}
+
+	if pos+1 >= len(args) {
+		return "", nil, fmt.Errorf("redirection requires a file argument")
+	}
+
+	return args[pos+1], args[:pos], nil
+}
+
+func (s *Shell) withRedirection(file string, fn func()) error {
+	if file == "" {
+		fn()
+		return nil
+	}
+
+	absPath, err := s.toAbs(file)
+    if err != nil {
+        return err
+    }
+
+    fd, err := os.Create(absPath)
+    if err != nil {
+        return err
+    }
+    defer fd.Close()
+
+    savedStdout, err := syscall.Dup(int(os.Stdout.Fd()))
+    if err != nil {
+        return fmt.Errorf("failed to save stdout: %w", err)
+    }
+    defer func() {
+        syscall.Dup2(savedStdout, int(os.Stdout.Fd()))
+        syscall.Close(savedStdout)
+    }()
+
+    if err := syscall.Dup2(int(fd.Fd()), int(os.Stdout.Fd())); err != nil {
+        return err
+    }
+
+    fn()
+    return nil
+}
+
+func (s *Shell) dispatch(command string, args []string) {
+	if cmd, ok := s.builtins[command]; ok {
+		cmd(args)
+		return
+	}
+
+	if _, err := exec.LookPath(command); err == nil {
+		s.executePathCommand(command, args)
+		return
+	} 
+	fmt.Fprintf(os.Stderr, "%s: command not found", command)
+}
+
 func (s *Shell) Loop() {
 	defer s.reader.Close()
 	
 	for s.loop {
 		line, err := s.reader.Readline()
-		if err != nil { // io.EOF
+		if err != nil {
 			break
 		}
 
@@ -54,52 +133,19 @@ func (s *Shell) Loop() {
         }
 		
 		command, args := tokens[0], tokens[1:]
-		
-		// Add to history
 		s._updateHistory(command, args)
 
-		// Check for input redirection
-		pos := slices.IndexFunc(args, func(s string) bool {
-			return s == ">" || s == "1>"
-		})
-		if pos != -1 {
-			if len(args) < pos + 1 {
-				fmt.Printf("%s: Error: redirection requires a file argument\n", s.name)
-				continue
-			}
-			file := args[pos + 1]
-			args = args[:pos]
-			absPath, nil := s.toAbs(file)
-			if err != nil {
-				fmt.Printf("%s: Error: %s\n", s.name, err)
-        		continue
-    		}	
-	
-			// Create the if it does not exist
-			fd, err := os.Create(absPath)
-			if err != nil {
-				fmt.Printf("%s: %s\n", s.name, err)
-			}
-			defer fd.Close()
-			s.stdin = fd
-		}
-
-		// Try builtin
-		if cmd, ok := s.builtins[command]; ok {
-			cmd(args)
+		outFile, args, err := parseRedirect(args)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%s: %s\n", s.name, err)
 			continue
 		}
 
-		// Search PATH
-		_, err = exec.LookPath(command)
-		if err == nil {
-			s.executePathCommand(command, args)
-			continue
-		} 
-		
-		// Command not found
-		fmt.Println(command + ": command not found")
-		
+		if err := s.withRedirection(outFile, func() {
+			s.dispatch(command, args)
+		}); err != nil {
+			fmt.Fprintf(os.Stderr, "%s: %s\n", s.name, err)
+		}
 	}
 }
 
@@ -117,7 +163,6 @@ func NewShell() *Shell {
         builtins: make(map[string]func([]string)),
 		defaultHistoryLimit: 16,
 		name: "myshell",
-		stdin: os.Stdin,
     }
 
 	config := &readline.Config{
